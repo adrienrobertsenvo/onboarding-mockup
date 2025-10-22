@@ -1,0 +1,20 @@
+style:
+  # Soft cool–purple gradient with subtle diagonal sheen
+  background_gradient: >
+    linear-gradient(135deg, #A7B8FF 0%, #8FA1FB 28%, #8A86ED 58%, #7E6FD4 82%, #745DBF 100%),
+    linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.00) 55%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 2px, rgba(255,255,255,0.00) 2px 18px)
+  card_background: "rgba(255,255,255,0.95)"
+  card_shadow: "0 14px 44px rgba(0,0,0,0.10)"
+  border_radius: "16px"
+  font_family: "Inter, sans-serif"
+  font_size: "18px"
+  heading_size: "28px"
+  accent_color: "#745DBF"   # buttons/links
+  button_size: "large"
+layout:
+  max_width: 1600px
+  horizontal_padding: 80px
+  vertical_padding: 48px
+  align: "center"
+  responsive: false

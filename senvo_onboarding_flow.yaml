@@ -1,0 +1,189 @@
+pages:
+  - id: carrier_contacts
+    title: "👋 Let's Meet Your Carrier Contact"
+    subtitle: "Start by telling us who handles your carrier relationship."
+    description: >
+      This helps us reach the right person if we need to clarify invoice or tracking details.
+    fields:
+      - id: contact_name
+        type: text
+        label: "Full Name"
+        required: true
+      - id: contact_email
+        type: email
+        label: "Email Address"
+        required: true
+      - id: contact_phone
+        type: tel
+        label: "Phone Number"
+        required: true
+      - id: premium_service
+        type: select
+        label: "Does this carrier offer premium / white-glove service?"
+        options:
+          - "Yes"
+          - "No"
+        default: "Yes"
+      - id: premium_contact_name
+        type: text
+        label: "Premium Support Contact"
+        conditional: "premium_service == 'Yes'"
+      - id: premium_contact_email
+        type: email
+        label: "Premium Support Email"
+        conditional: "premium_service == 'Yes'"
+      - id: premium_contact_phone
+        type: tel
+        label: "Premium Support Phone"
+        conditional: "premium_service == 'Yes'"
+
+  - id: account_contracts
+    title: "📦 Account Numbers & Contracts"
+    subtitle: "Connect your carrier accounts and upload all related contracts."
+    description: >
+      Add or import your account numbers below and link them to contract files.
+      You can assign **multiple contracts to multiple account numbers** — for example,
+      one account number might have three contracts.
+    fields:
+      - id: account_numbers
+        type: textarea
+        label: "Account Numbers (one per line)"
+        placeholder: "e.g., 123456789"
+        required: true
+      - id: csv_import
+        type: file
+        label: "Or import from CSV"
+        accept: ".csv"
+        optional: true
+      - id: contract_files
+        type: file
+        label: "Upload Contract Files"
+        accept: ".pdf,.doc,.docx"
+        multiple: true
+        required: true
+      - id: contract_mappings
+        type: drag_drop_matcher
+        label: "Match Account Numbers and Contracts"
+        description: >
+          You can connect each contract to several account numbers, and vice versa.
+          Drag and drop freely — it's flexible!
+
+  - id: invoices
+    title: "💌 Invoice Forwarding Setup"
+    description: >
+      This is where you decide how Senvo will receive your carrier invoices.
+      Choose one of the two options below.
+    fields:
+      - id: invoice_method
+        type: select
+        label: "How would you like to share your invoices?"
+        options:
+          - "Email Forwarding"
+          - "SFTP Upload"
+        default: "Email Forwarding"
+      - id: email_forwarding
+        type: info_box
+        conditional: "invoice_method == 'Email Forwarding'"
+        title: "📧 Email Forwarding"
+        content: >
+          **Quick & Easy:** Forward invoice emails with PDF or CSV attachments to
+          **report-import@companyname.io** and we'll process them automatically.
+      - id: sftp_host_type
+        type: select
+        label: "Who will host the SFTP?"
+        conditional: "invoice_method == 'SFTP Upload'"
+        options:
+          - "My Company (Self-Hosted)"
+          - "Senvo Hosted"
+        default: "My Company (Self-Hosted)"
+      - id: sftp_hostname
+        type: text
+        label: "Hostname"
+        conditional: "invoice_method == 'SFTP Upload' && sftp_host_type == 'My Company (Self-Hosted)'"
+        placeholder: "ftp.yourcompany.com"
+      - id: sftp_port
+        type: text
+        label: "Port"
+        conditional: "invoice_method == 'SFTP Upload' && sftp_host_type == 'My Company (Self-Hosted)'"
+        default: "22"
+      - id: sftp_username
+        type: text
+        label: "Username"
+        conditional: "invoice_method == 'SFTP Upload' && sftp_host_type == 'My Company (Self-Hosted)'"
+      - id: sftp_password
+        type: password
+        label: "Password"
+        conditional: "invoice_method == 'SFTP Upload' && sftp_host_type == 'My Company (Self-Hosted)'"
+      - id: sftp_path
+        type: text
+        label: "Path"
+        conditional: "invoice_method == 'SFTP Upload' && sftp_host_type == 'My Company (Self-Hosted)'"
+        default: "/"
+
+  - id: tracking_api
+    title: "🔑 Tracking API Credentials"
+    subtitle: "Connect your tracking data — or skip for now."
+    fields:
+      - id: api_endpoint
+        type: url
+        label: "API Endpoint URL"
+        placeholder: "https://api.carrier.com/v1"
+      - id: api_username
+        type: text
+        label: "API Username"
+        placeholder: "api_user_12345"
+      - id: api_password
+        type: password
+        label: "API Password"
+      - id: api_key
+        type: text
+        label: "API Key"
+        placeholder: "sk_live_xxxxxxxxxxxxxx"
+      - id: api_documentation_file
+        type: file
+        label: "Upload Documentation (Optional)"
+        accept: ".pdf,.doc,.docx,.txt"
+      - id: api_notes
+        type: textarea
+        label: "Notes"
+        placeholder: "Add any helpful details or context for your API configuration"
+        rows: 4
+
+  - id: warehouse_data
+    title: "🏭 Warehouse Management or End-of-Day Report"
+    subtitle: "Upload a sample file or skip for now."
+    description: >
+      This helps us match your shipment data to invoices and detect discrepancies.
+    fields:
+      - id: wms_file
+        type: file
+        label: "Upload Report"
+        accept: ".csv,.xlsx,.xls,.pdf"
+      - id: wms_notes
+        type: textarea
+        label: "How often do you plan to send this report?"
+        placeholder: "e.g., Daily, Weekly, Monthly"
+        rows: 3
+      - id: recommended_fields
+        type: info_box
+        title: "Recommended Fields"
+        content: >
+          **Required:**
+          - Carrier
+          - Shipment Number (Tracking / Waybill)
+          - Shipment Date
+
+          **Additional fields for better audits:**
+          - Commercial Value
+          - Weight
+          - Dimensions
+
+settings:
+  navigation:
+    allow_back: true
+    allow_resume: true
+    show_progress_bar: true
+  autosave:
+    enabled: true
+    frequency_seconds: 20
+    storage: "cloud"

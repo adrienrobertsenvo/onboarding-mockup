@@ -1,0 +1,8 @@
+client/node_modules
+server/node_modules
+node_modules
+.idea/
+
+client/.DS_Store
+
+.DS_Store

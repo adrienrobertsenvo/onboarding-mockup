@@ -1,0 +1,17 @@
+{
+  "name": "senvo-carrier-onboarding",
+  "version": "1.0.0",
+  "description": "Senvo Carrier Onboarding Interface - Guided flow for connecting carrier accounts",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
+  },
+  "keywords": ["senvo", "carrier", "onboarding", "logistics"],
+  "author": "Senvo",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
