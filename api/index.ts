@@ -1,115 +1,111 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import express from 'express';
-import cors from 'cors';
-import multer from 'multer';
-import { nanoid } from 'nanoid';
-
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Configure multer for memory storage
-const upload = multer({ storage: multer.memoryStorage() });
 
 // In-memory storage (for demo purposes)
 const customers = new Map();
 const carrierConfigs = new Map();
 const trackingAPIs = new Map();
 
-// Customer endpoints
-app.post('/api/customers', (req, res) => {
-  const customerId = nanoid();
-  const customer = {
-    id: customerId,
-    ...req.body,
-    created_at: new Date()
-  };
-  customers.set(customerId, customer);
-  res.json(customer);
-});
+// Simple ID generator
+const generateId = () => Math.random().toString(36).substring(2, 15);
 
-app.get('/api/customers/:id/invoice-email', (req, res) => {
-  const customerId = req.params.id;
-  const email = `invoices+${customerId}@senvo.de`;
-  res.json({ email });
-});
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-app.post('/api/customers/:id/complete', (req, res) => {
-  const customerId = req.params.id;
-  const customer = customers.get(customerId);
-  if (customer) {
-    customer.onboarding_complete = true;
-    customer.completed_at = new Date();
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  const { url, method } = req;
+  const path = url?.replace('/api', '') || '';
+
+  // Health check
+  if (path === '/health' && method === 'GET') {
+    return res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  }
+
+  // Customer endpoints
+  if (path === '/customers' && method === 'POST') {
+    const customerId = generateId();
+    const customer = {
+      id: customerId,
+      ...req.body,
+      created_at: new Date()
+    };
     customers.set(customerId, customer);
-  }
-  res.json({ success: true });
-});
-
-app.get('/api/customers/:id/carriers', (req, res) => {
-  const customerId = req.params.id;
-  const customerCarriers = Array.from(carrierConfigs.values())
-    .filter(config => config.customer_id === customerId);
-  res.json(customerCarriers);
-});
-
-// Carrier configuration endpoints
-app.post('/api/carrier-config', (req, res) => {
-  const configId = nanoid();
-  const config = {
-    id: configId,
-    ...req.body,
-    created_at: new Date()
-  };
-  carrierConfigs.set(configId, config);
-  res.json(config);
-});
-
-app.put('/api/carrier-config/:id', upload.any(), (req, res) => {
-  const configId = req.params.id;
-  const existingConfig = carrierConfigs.get(configId);
-
-  if (!existingConfig) {
-    return res.status(404).json({ message: 'Configuration not found' });
+    return res.json(customer);
   }
 
-  const updatedConfig = {
-    ...existingConfig,
-    ...req.body,
-    updated_at: new Date()
-  };
-
-  if (req.files) {
-    const files = req.files as Express.Multer.File[];
-    files.forEach(file => {
-      updatedConfig[file.fieldname] = file.originalname;
-    });
+  if (path.startsWith('/customers/') && path.endsWith('/invoice-email') && method === 'GET') {
+    const customerId = path.split('/')[2];
+    const email = `invoices+${customerId}@senvo.de`;
+    return res.json({ email });
   }
 
-  carrierConfigs.set(configId, updatedConfig);
-  res.json(updatedConfig);
-});
+  if (path.startsWith('/customers/') && path.endsWith('/complete') && method === 'POST') {
+    const customerId = path.split('/')[2];
+    const customer = customers.get(customerId);
+    if (customer) {
+      customer.onboarding_complete = true;
+      customer.completed_at = new Date();
+      customers.set(customerId, customer);
+    }
+    return res.json({ success: true });
+  }
 
-// Tracking API endpoints
-app.post('/api/carrier-config/:id/tracking-api', (req, res) => {
-  const configId = req.params.id;
-  const trackingAPI = {
-    id: nanoid(),
-    carrier_config_id: configId,
-    ...req.body,
-    created_at: new Date()
-  };
-  trackingAPIs.set(trackingAPI.id, trackingAPI);
-  res.json(trackingAPI);
-});
+  if (path.startsWith('/customers/') && path.endsWith('/carriers') && method === 'GET') {
+    const customerId = path.split('/')[2];
+    const customerCarriers = Array.from(carrierConfigs.values())
+      .filter((config: any) => config.customer_id === customerId);
+    return res.json(customerCarriers);
+  }
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+  // Carrier configuration endpoints
+  if (path === '/carrier-config' && method === 'POST') {
+    const configId = generateId();
+    const config = {
+      id: configId,
+      ...req.body,
+      created_at: new Date()
+    };
+    carrierConfigs.set(configId, config);
+    return res.json(config);
+  }
 
-// Vercel serverless function handler
-export default function handler(req: VercelRequest, res: VercelResponse) {
-  return app(req as any, res as any);
+  if (path.startsWith('/carrier-config/') && method === 'PUT') {
+    const pathParts = path.split('/');
+    const configId = pathParts[2];
+    const existingConfig = carrierConfigs.get(configId);
+
+    if (!existingConfig) {
+      return res.status(404).json({ message: 'Configuration not found' });
+    }
+
+    const updatedConfig = {
+      ...existingConfig,
+      ...req.body,
+      updated_at: new Date()
+    };
+
+    carrierConfigs.set(configId, updatedConfig);
+    return res.json(updatedConfig);
+  }
+
+  // Tracking API endpoints
+  if (path.includes('/tracking-api') && method === 'POST') {
+    const configId = path.split('/')[2];
+    const trackingAPI = {
+      id: generateId(),
+      carrier_config_id: configId,
+      ...req.body,
+      created_at: new Date()
+    };
+    trackingAPIs.set(trackingAPI.id, trackingAPI);
+    return res.json(trackingAPI);
+  }
+
+  // Not found
+  return res.status(404).json({ error: 'Not found', path, method });
 }
