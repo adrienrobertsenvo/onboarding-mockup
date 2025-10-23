@@ -1,72 +1,127 @@
-import axios from 'axios';
 import type { CustomerInfo, CarrierConfig, TrackingAPI } from '../types';
 
-const api = axios.create({
-  baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
+// Simple ID generator
+const generateId = () => Math.random().toString(36).substring(2, 15);
+
+// LocalStorage keys
+const STORAGE_KEYS = {
+  CUSTOMERS: 'senvo_customers',
+  CARRIER_CONFIGS: 'senvo_carrier_configs',
+  TRACKING_APIS: 'senvo_tracking_apis'
+};
+
+// Helper functions for localStorage
+const getFromStorage = <T>(key: string): T[] => {
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : [];
+};
+
+const saveToStorage = <T>(key: string, data: T[]) => {
+  localStorage.setItem(key, JSON.stringify(data));
+};
+
+// Simulate API delay for realism
+const delay = (ms: number = 300) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const apiService = {
   // Customer endpoints
   createCustomer: async (data: CustomerInfo) => {
-    const response = await api.post('/customers', data);
-    return response.data;
+    await delay();
+    const customerId = generateId();
+    const customer = {
+      id: customerId,
+      ...data,
+      created_at: new Date().toISOString()
+    };
+
+    const customers = getFromStorage(STORAGE_KEYS.CUSTOMERS);
+    customers.push(customer);
+    saveToStorage(STORAGE_KEYS.CUSTOMERS, customers);
+
+    return customer;
   },
 
   // Carrier configuration endpoints
   createCarrierConfig: async (customerId: string, carrier: string) => {
-    const response = await api.post('/carrier-config', {
+    await delay();
+    const configId = generateId();
+    const config = {
+      id: configId,
       customer_id: customerId,
-      selected_carrier: carrier
-    });
-    return response.data;
+      selected_carrier: carrier,
+      created_at: new Date().toISOString()
+    };
+
+    const configs = getFromStorage(STORAGE_KEYS.CARRIER_CONFIGS);
+    configs.push(config);
+    saveToStorage(STORAGE_KEYS.CARRIER_CONFIGS, configs);
+
+    return config;
   },
 
   updateCarrierDetails: async (configId: string, data: Partial<CarrierConfig>) => {
-    const formData = new FormData();
+    await delay();
+    const configs = getFromStorage<any>(STORAGE_KEYS.CARRIER_CONFIGS);
+    const index = configs.findIndex((c: any) => c.id === configId);
 
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (value instanceof File) {
-          formData.append(key, value);
-        } else {
-          formData.append(key, String(value));
-        }
-      }
-    });
+    if (index !== -1) {
+      configs[index] = {
+        ...configs[index],
+        ...data,
+        updated_at: new Date().toISOString()
+      };
+      saveToStorage(STORAGE_KEYS.CARRIER_CONFIGS, configs);
+      return configs[index];
+    }
 
-    const response = await api.put(`/carrier-config/${configId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    return response.data;
+    throw new Error('Configuration not found');
   },
 
   // Tracking API endpoints
   saveTrackingAPI: async (configId: string, data: TrackingAPI) => {
-    const response = await api.post(`/carrier-config/${configId}/tracking-api`, data);
-    return response.data;
+    await delay();
+    const trackingAPI = {
+      id: generateId(),
+      carrier_config_id: configId,
+      ...data,
+      created_at: new Date().toISOString()
+    };
+
+    const apis = getFromStorage(STORAGE_KEYS.TRACKING_APIS);
+    apis.push(trackingAPI);
+    saveToStorage(STORAGE_KEYS.TRACKING_APIS, apis);
+
+    return trackingAPI;
   },
 
   // Invoice email generation
   getInvoiceEmail: async (customerId: string) => {
-    const response = await api.get(`/customers/${customerId}/invoice-email`);
-    return response.data;
+    await delay(200);
+    return {
+      email: `invoices+${customerId}@senvo.de`
+    };
   },
 
   // Mark onboarding complete
   completeOnboarding: async (customerId: string) => {
-    const response = await api.post(`/customers/${customerId}/complete`);
-    return response.data;
+    await delay();
+    const customers = getFromStorage<any>(STORAGE_KEYS.CUSTOMERS);
+    const index = customers.findIndex((c: any) => c.id === customerId);
+
+    if (index !== -1) {
+      customers[index].onboarding_complete = true;
+      customers[index].completed_at = new Date().toISOString();
+      saveToStorage(STORAGE_KEYS.CUSTOMERS, customers);
+    }
+
+    return { success: true };
   },
 
   // Get customer's carriers
   getCustomerCarriers: async (customerId: string) => {
-    const response = await api.get(`/customers/${customerId}/carriers`);
-    return response.data;
+    await delay(200);
+    const configs = getFromStorage<any>(STORAGE_KEYS.CARRIER_CONFIGS);
+    return configs.filter((c: any) => c.customer_id === customerId);
   }
 };
 

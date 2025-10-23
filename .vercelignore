@@ -5,6 +5,7 @@ node_modules
 *.log
 .DS_Store
 server/
+api/
 *.md
 .vscode
 .idea
