@@ -60,14 +60,24 @@ This will start:
 
 ## Onboarding Flow
 
-1. **Welcome** - Enter your name to personalize the experience
-2. **What to Expect** - Review what you'll need (with autosave notification)
-3. **Carrier Selection** - Choose shipping carrier
-4. **Carrier Details** - Add account info, upload contracts, and premium service contacts
-5. **Tracking API** - Securely save API credentials
-6. **Invoice Setup** - Configure email forwarding
-7. **Completion** - Confirm successful setup
-8. **Dashboard** - View all carriers and add more
+### 1. Customer Setup
+  - 1.1 Shared Email - Configure email for claiming
+  - 1.2 WMS/EOD Report
+    - 1.2.1 WMS Example File - Upload sample warehouse management file
+    - 1.2.2 WMS File Ingestion - Configure automated file processing
+  - 1.3 Invite Other Users - Add team members to your account
+
+### 2. Carrier Setup
+  - 2.0 Carrier Selection - Choose your shipping carriers
+  - **Per Carrier Configuration:**
+    - 2.x.1 Carrier Contacts - Add account manager information
+    - 2.x.2 Contract Rates - Upload account numbers and contracts
+    - 2.x.3 Data Ingress
+      - 2.x.3.1 Tracking API - Configure API credentials
+      - 2.x.3.2 Invoices Ingestion - Set up invoice forwarding
+
+### 3. Completion & Dashboard
+  - Review setup and access your dashboard
 
 ## Technology Stack
 

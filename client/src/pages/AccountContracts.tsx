@@ -2,6 +2,7 @@ import { useState, FormEvent, DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
 import DragDropMatcher from '../components/DragDropMatcher';
+import { getCarrierLogo } from '../utils/carriers';
 
 interface AccountContractsProps {
   configId: string;
@@ -19,6 +20,7 @@ interface FormData {
 
 export default function AccountContracts({ configId, carrierName, onComplete }: AccountContractsProps) {
   const navigate = useNavigate();
+  const carrierLogo = getCarrierLogo(carrierName);
   const [formData, setFormData] = useState<FormData>({
     account_input_method: 'Add Manually',
     manual_account_numbers: '',
@@ -88,7 +90,7 @@ export default function AccountContracts({ configId, carrierName, onComplete }: 
   };
 
   const handleSkip = () => {
-    navigate('/carrier-contacts');
+    navigate('/tracking-api');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -126,7 +128,7 @@ export default function AccountContracts({ configId, carrierName, onComplete }: 
 
       await apiService.updateCarrierDetails(configId, apiData);
       onComplete();
-      navigate('/carrier-contacts');
+      navigate('/tracking-api');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save account and contract information');
     } finally {
@@ -142,6 +144,23 @@ export default function AccountContracts({ configId, carrierName, onComplete }: 
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: '30%' }}></div>
         </div>
+
+        {carrierLogo && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '1.5rem'
+          }}>
+            <img
+              src={carrierLogo}
+              alt={carrierName}
+              style={{
+                height: '60px',
+                objectFit: 'contain'
+              }}
+            />
+          </div>
+        )}
 
         <div className="header">
           <h1 className="title" style={{ fontSize: '26px' }}>📦 Account Numbers & Contracts</h1>

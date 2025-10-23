@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
+import { getCarrierLogo } from '../utils/carriers';
 
 interface CarrierContactsProps {
   configId: string;
@@ -20,6 +21,7 @@ interface FormData {
 
 export default function CarrierContacts({ configId, carrierName, onComplete }: CarrierContactsProps) {
   const navigate = useNavigate();
+  const carrierLogo = getCarrierLogo(carrierName);
   const [formData, setFormData] = useState<FormData>({
     account_manager_name: '',
     account_manager_email: '',
@@ -37,7 +39,7 @@ export default function CarrierContacts({ configId, carrierName, onComplete }: C
   };
 
   const handleSkip = () => {
-    navigate('/tracking-api');
+    navigate('/account-contracts');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -48,7 +50,7 @@ export default function CarrierContacts({ configId, carrierName, onComplete }: C
     try {
       await apiService.updateCarrierDetails(configId, formData);
       onComplete();
-      navigate('/tracking-api');
+      navigate('/account-contracts');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save carrier contact information');
     } finally {
@@ -62,6 +64,23 @@ export default function CarrierContacts({ configId, carrierName, onComplete }: C
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: '50%' }}></div>
         </div>
+
+        {carrierLogo && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '1.5rem'
+          }}>
+            <img
+              src={carrierLogo}
+              alt={carrierName}
+              style={{
+                height: '60px',
+                objectFit: 'contain'
+              }}
+            />
+          </div>
+        )}
 
         <div className="header">
           <h1 className="title" style={{ fontSize: '26px' }}>👋 Let's Meet Your Carrier Contact</h1>
@@ -197,7 +216,7 @@ export default function CarrierContacts({ configId, carrierName, onComplete }: C
           <button
             type="button"
             className="btn"
-            onClick={() => navigate('/account-contracts')}
+            onClick={() => navigate('/carrier-selection')}
             style={{
               marginTop: '1rem',
               background: 'transparent',

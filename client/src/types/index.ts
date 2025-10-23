@@ -31,15 +31,21 @@ export interface TrackingAPI {
   api_key: string;
 }
 
+export interface StepCompletion {
+  [stepId: string]: boolean | 'skipped';
+}
+
 export interface OnboardingState {
   customerId?: string;
   customerInfo?: CustomerInfo;
   carrierConfigs?: CarrierConfig[];
   currentCarrierConfigId?: string;
+  currentCarrierIndex?: number;
   trackingAPI?: TrackingAPI;
   invoiceEmail?: string;
   currentStep: number;
   lastSaved?: Date;
+  completedSteps?: StepCompletion;
 }
 
 export type CarrierOption =

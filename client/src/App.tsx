@@ -1,22 +1,50 @@
 import { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Welcome from './pages/Welcome';
 import WhatToExpect from './pages/WhatToExpect';
+import SharedEmail from './pages/SharedEmail';
 import CarrierSelection from './pages/CarrierSelection';
+import CarrierIntro from './pages/CarrierIntro';
+import CarrierCompletion from './pages/CarrierCompletion';
 import AccountContracts from './pages/AccountContracts';
 import CarrierContacts from './pages/CarrierContacts';
 import TrackingAPI from './pages/TrackingAPI';
 import Invoices from './pages/Invoices';
 import WarehouseData from './pages/WarehouseData';
+import DocumentIngestion from './pages/DocumentIngestion';
 import Completion from './pages/Completion';
 import Dashboard from './pages/Dashboard';
+import InviteUsers from './pages/InviteUsers';
+import { Sidebar } from './components/Sidebar';
 import autosaveService from './services/autosave';
-import type { OnboardingState, CustomerInfo, CarrierConfig } from './types';
+import type { OnboardingState, CustomerInfo, CarrierConfig, StepCompletion } from './types';
+
+// Layout wrapper component that conditionally shows sidebar
+function Layout({ children, showSidebar, state }: { children: React.ReactNode; showSidebar: boolean; state: OnboardingState }) {
+  if (!showSidebar) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div style={{ display: 'flex' }}>
+      <Sidebar
+        completedSteps={state.completedSteps || {}}
+        carrierConfigs={state.carrierConfigs?.map(c => ({ id: c.id!, carrierName: c.selected_carrier }))}
+        currentCarrierIndex={state.currentCarrierIndex}
+      />
+      <div style={{ marginLeft: '320px', width: 'calc(100% - 320px)', minHeight: '100vh' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [state, setState] = useState<OnboardingState>({
     currentStep: 0,
-    carrierConfigs: []
+    carrierConfigs: [],
+    completedSteps: {},
+    currentCarrierIndex: 0
   });
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const autosaveInterval = useRef<NodeJS.Timeout | null>(null);
@@ -54,46 +82,154 @@ function App() {
     setShowResumePrompt(false);
   };
 
+  // Helper function to mark steps as complete
+  const markStepComplete = (stepId: string, carrierIndex?: number) => {
+    setState(prev => {
+      const key = carrierIndex !== undefined ? `${stepId}-${carrierIndex}` : stepId;
+      return {
+        ...prev,
+        completedSteps: {
+          ...prev.completedSteps,
+          [key]: true
+        }
+      };
+    });
+  };
+
   const handleWelcomeComplete = (customerId: string, data: CustomerInfo) => {
     setState(prev => ({
       ...prev,
       customerId,
       customerInfo: data,
-      currentStep: 1
+      currentStep: 1,
+      completedSteps: {
+        ...prev.completedSteps,
+        'welcome': true
+      }
     }));
   };
 
-  const handleCarrierSelect = (configId: string, carrier: string) => {
-    setState(prev => ({
-      ...prev,
-      currentCarrierConfigId: configId,
-      carrierConfigs: [
-        ...(prev.carrierConfigs || []),
-        {
-          id: configId,
-          selected_carrier: carrier
+  const handleCarrierSelect = (carriers: Array<{ configId: string; carrier: string }>) => {
+    setState(prev => {
+      const newCarrierConfigs = carriers.map(c => ({
+        id: c.configId,
+        selected_carrier: c.carrier
+      }));
+
+      return {
+        ...prev,
+        currentCarrierConfigId: carriers[0]?.configId, // Set first carrier as current
+        currentCarrierIndex: 0, // Initialize to first carrier
+        carrierConfigs: newCarrierConfigs,
+        currentStep: 2,
+        completedSteps: {
+          ...prev.completedSteps,
+          'carrier-setup': true
         }
-      ],
-      currentStep: 2
-    }));
+      };
+    });
   };
 
   const handleCarrierDetailsComplete = () => {
-    setState(prev => ({ ...prev, currentStep: 3 }));
+    setState(prev => {
+      const carrierIndex = prev.carrierConfigs?.findIndex(c => c.id === prev.currentCarrierConfigId) ?? 0;
+      return {
+        ...prev,
+        currentStep: 3,
+        completedSteps: {
+          ...prev.completedSteps,
+          [`contract-rates-${carrierIndex}`]: true,
+          [`carrier-contacts-${carrierIndex}`]: true
+        }
+      };
+    });
   };
 
   const handleTrackingAPIComplete = () => {
-    setState(prev => ({ ...prev, currentStep: 4 }));
+    setState(prev => {
+      const carrierIndex = prev.carrierConfigs?.findIndex(c => c.id === prev.currentCarrierConfigId) ?? 0;
+      return {
+        ...prev,
+        currentStep: 4,
+        completedSteps: {
+          ...prev.completedSteps,
+          [`tracking-api-${carrierIndex}`]: true
+        }
+      };
+    });
   };
 
   const handleInvoicesComplete = () => {
-    setState(prev => ({ ...prev, currentStep: 5 }));
+    setState(prev => {
+      const carrierIndex = prev.carrierConfigs?.findIndex(c => c.id === prev.currentCarrierConfigId) ?? 0;
+      return {
+        ...prev,
+        currentStep: 5,
+        completedSteps: {
+          ...prev.completedSteps,
+          'shared-email': true,
+          [`invoices-ingestion-${carrierIndex}`]: true
+        }
+      };
+    });
     // Clear autosave when onboarding is complete
     if (autosaveInterval.current) {
       autosaveService.stopAutosave(autosaveInterval.current);
       autosaveInterval.current = null;
     }
     autosaveService.clear();
+  };
+
+  const handleWarehouseDataComplete = () => {
+    setState(prev => ({
+      ...prev,
+      completedSteps: {
+        ...prev.completedSteps,
+        'wms-example-file': true
+      }
+    }));
+  };
+
+  const handleWMSIngestionComplete = () => {
+    setState(prev => ({
+      ...prev,
+      currentStep: 5,
+      completedSteps: {
+        ...prev.completedSteps,
+        'wms-file-ingestion': true,
+        'wms-eod-report': true  // Mark parent step as complete when both substeps are done
+      }
+    }));
+  };
+
+  const handleInviteUsersComplete = () => {
+    setState(prev => ({
+      ...prev,
+      completedSteps: {
+        ...prev.completedSteps,
+        'invite-users': true
+      }
+    }));
+  };
+
+  const handleSharedEmailComplete = () => {
+    setState(prev => ({
+      ...prev,
+      completedSteps: {
+        ...prev.completedSteps,
+        'shared-email': true
+      }
+    }));
+  };
+
+  const handleWhatToExpectComplete = () => {
+    setState(prev => ({
+      ...prev,
+      completedSteps: {
+        ...prev.completedSteps,
+        'what-to-expect': true
+      }
+    }));
   };
 
   const handleAddAnotherCarrier = () => {
@@ -165,127 +301,253 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Welcome onComplete={handleWelcomeComplete} />} />
+        <Route
+          path="/"
+          element={
+            <Layout showSidebar={false} state={state}>
+              <Welcome onComplete={handleWelcomeComplete} />
+            </Layout>
+          }
+        />
 
         <Route
           path="/what-to-expect"
           element={
-            state.customerInfo?.customer_name ? (
-              <WhatToExpect customerName={state.customerInfo.customer_name} />
-            ) : (
-              <Navigate to="/" />
-            )
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.customerInfo?.customer_name ? (
+                <WhatToExpect
+                  customerName={state.customerInfo.customer_name}
+                  onComplete={handleWhatToExpectComplete}
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/shared-email"
+          element={
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.customerId ? (
+                <SharedEmail
+                  customerId={state.customerId}
+                  onComplete={handleSharedEmailComplete}
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
           }
         />
 
         <Route
           path="/carrier-selection"
           element={
-            state.customerId ? (
-              <CarrierSelection
-                customerId={state.customerId}
-                onComplete={handleCarrierSelect}
-              />
-            ) : (
-              <Navigate to="/" />
-            )
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.customerId ? (
+                <CarrierSelection
+                  customerId={state.customerId}
+                  onComplete={handleCarrierSelect}
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/carrier-intro"
+          element={
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.customerId && state.carrierConfigs && state.carrierConfigs.length > 0 ? (
+                <CarrierIntro
+                  carrierName={state.carrierConfigs[state.currentCarrierIndex || 0]?.selected_carrier || ''}
+                  carrierIndex={state.currentCarrierIndex || 0}
+                  totalCarriers={state.carrierConfigs.length}
+                />
+              ) : (
+                <Navigate to="/carrier-selection" />
+              )}
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/carrier-completion"
+          element={
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.customerId && state.carrierConfigs && state.carrierConfigs.length > 0 ? (
+                <CarrierCompletion
+                  carrierName={state.carrierConfigs[state.currentCarrierIndex || 0]?.selected_carrier || ''}
+                  carrierIndex={state.currentCarrierIndex || 0}
+                  totalCarriers={state.carrierConfigs.length}
+                  completedSteps={{
+                    contacts: !!state.completedSteps?.[`carrier-contacts-${state.currentCarrierIndex || 0}`],
+                    contracts: !!state.completedSteps?.[`contract-rates-${state.currentCarrierIndex || 0}`],
+                    trackingAPI: !!state.completedSteps?.[`tracking-api-${state.currentCarrierIndex || 0}`],
+                    invoices: !!state.completedSteps?.[`invoices-ingestion-${state.currentCarrierIndex || 0}`]
+                  }}
+                  onNext={() => {
+                    setState(prev => ({
+                      ...prev,
+                      currentCarrierIndex: (prev.currentCarrierIndex || 0) + 1,
+                      currentCarrierConfigId: prev.carrierConfigs?.[(prev.currentCarrierIndex || 0) + 1]?.id
+                    }));
+                  }}
+                />
+              ) : (
+                <Navigate to="/carrier-selection" />
+              )}
+            </Layout>
           }
         />
 
         <Route
           path="/account-contracts"
           element={
-            state.currentCarrierConfigId && currentCarrierConfig ? (
-              <AccountContracts
-                configId={state.currentCarrierConfigId}
-                carrierName={currentCarrierConfig.selected_carrier}
-                onComplete={handleCarrierDetailsComplete}
-              />
-            ) : (
-              <Navigate to="/" />
-            )
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.currentCarrierConfigId && currentCarrierConfig ? (
+                <AccountContracts
+                  configId={state.currentCarrierConfigId}
+                  carrierName={currentCarrierConfig.selected_carrier}
+                  onComplete={handleCarrierDetailsComplete}
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
           }
         />
 
         <Route
           path="/carrier-contacts"
           element={
-            state.currentCarrierConfigId && currentCarrierConfig ? (
-              <CarrierContacts
-                configId={state.currentCarrierConfigId}
-                carrierName={currentCarrierConfig.selected_carrier}
-                onComplete={handleCarrierDetailsComplete}
-              />
-            ) : (
-              <Navigate to="/" />
-            )
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.currentCarrierConfigId && currentCarrierConfig ? (
+                <CarrierContacts
+                  configId={state.currentCarrierConfigId}
+                  carrierName={currentCarrierConfig.selected_carrier}
+                  onComplete={handleCarrierDetailsComplete}
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
           }
         />
 
         <Route
           path="/tracking-api"
           element={
-            state.currentCarrierConfigId && currentCarrierConfig ? (
-              <TrackingAPI
-                configId={state.currentCarrierConfigId}
-                carrierName={currentCarrierConfig.selected_carrier}
-                onComplete={handleTrackingAPIComplete}
-              />
-            ) : (
-              <Navigate to="/" />
-            )
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.currentCarrierConfigId && currentCarrierConfig ? (
+                <TrackingAPI
+                  configId={state.currentCarrierConfigId}
+                  carrierName={currentCarrierConfig.selected_carrier}
+                  onComplete={handleTrackingAPIComplete}
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
           }
         />
 
         <Route
           path="/invoices"
           element={
-            state.customerId && state.currentCarrierConfigId && currentCarrierConfig ? (
-              <Invoices
-                customerId={state.customerId}
-                configId={state.currentCarrierConfigId}
-                carrierName={currentCarrierConfig.selected_carrier}
-                onComplete={handleInvoicesComplete}
-              />
-            ) : (
-              <Navigate to="/" />
-            )
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.customerId && state.currentCarrierConfigId && currentCarrierConfig ? (
+                <Invoices
+                  customerId={state.customerId}
+                  configId={state.currentCarrierConfigId}
+                  carrierName={currentCarrierConfig.selected_carrier}
+                  onComplete={handleInvoicesComplete}
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
           }
         />
 
         <Route
           path="/warehouse-data"
           element={
-            state.currentCarrierConfigId && currentCarrierConfig ? (
-              <WarehouseData
-                configId={state.currentCarrierConfigId}
-                carrierName={currentCarrierConfig.selected_carrier}
-                onComplete={handleInvoicesComplete}
-              />
-            ) : (
-              <Navigate to="/" />
-            )
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.customerId ? (
+                <WarehouseData
+                  configId={state.currentCarrierConfigId || ''}
+                  carrierName={currentCarrierConfig?.selected_carrier || ''}
+                  onComplete={handleWarehouseDataComplete}
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/wms-file-ingestion"
+          element={
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.customerId ? (
+                <DocumentIngestion
+                  customerId={state.customerId}
+                  configId={state.currentCarrierConfigId}
+                  carrierName={currentCarrierConfig?.selected_carrier}
+                  onComplete={handleWMSIngestionComplete}
+                  type="wms"
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/invite-users"
+          element={
+            <Layout showSidebar={!!state.customerId} state={state}>
+              {state.customerId ? (
+                <InviteUsers
+                  customerId={state.customerId}
+                  onComplete={handleInviteUsersComplete}
+                />
+              ) : (
+                <Navigate to="/" />
+              )}
+            </Layout>
           }
         />
 
         <Route
           path="/completion"
           element={
-            <Completion
-              customerId={state.customerId}
-              configId={state.currentCarrierConfigId}
-            />
+            <Layout showSidebar={!!state.customerId} state={state}>
+              <Completion
+                customerId={state.customerId}
+                configId={state.currentCarrierConfigId}
+              />
+            </Layout>
           }
         />
 
         <Route
           path="/dashboard"
           element={
-            <Dashboard
-              customerId={state.customerId}
-              customerName={state.customerInfo?.customer_name}
-              onAddCarrier={handleAddAnotherCarrier}
-            />
+            <Layout showSidebar={false} state={state}>
+              <Dashboard
+                customerId={state.customerId}
+                customerName={state.customerInfo?.customer_name}
+                onAddCarrier={handleAddAnotherCarrier}
+              />
+            </Layout>
           }
         />
 

@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
+import { getCarrierLogo } from '../utils/carriers';
 
 interface TrackingAPIProps {
   configId: string;
@@ -19,6 +20,7 @@ interface FormData {
 
 export default function TrackingAPIPage({ configId, carrierName, onComplete }: TrackingAPIProps) {
   const navigate = useNavigate();
+  const carrierLogo = getCarrierLogo(carrierName);
   const [formData, setFormData] = useState<FormData>({
     api_endpoint: '',
     api_username: '',
@@ -68,6 +70,23 @@ export default function TrackingAPIPage({ configId, carrierName, onComplete }: T
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: '60%' }}></div>
         </div>
+
+        {carrierLogo && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '1.5rem'
+          }}>
+            <img
+              src={carrierLogo}
+              alt={carrierName}
+              style={{
+                height: '60px',
+                objectFit: 'contain'
+              }}
+            />
+          </div>
+        )}
 
         <div className="header">
           <h1 className="title" style={{ fontSize: '26px' }}>🔑 Tracking API Credentials</h1>
