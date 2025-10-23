@@ -1,8 +1,44 @@
+# Dependencies
+node_modules/
+**/node_modules/
 client/node_modules
 server/node_modules
-node_modules
+api/node_modules
+
+# Build outputs
+dist/
+build/
+.vercel/
+client/dist
+server/dist
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.production
+.env.development
+
+# Editor
+.vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-client/.DS_Store
-
+# OS
 .DS_Store
+client/.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Uploads (for local dev)
+server/uploads/*
+!server/uploads/.gitkeep
